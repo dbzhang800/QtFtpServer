@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>ca/ca-cert.pem</file>
+        <file>ca/ca-key.pem</file>
+    </qresource>
+</RCC>
