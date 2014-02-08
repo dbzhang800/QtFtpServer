@@ -41,7 +41,6 @@
 #endif
 #include <QLocale>
 #include <QMap>
-#include <QRegularExpression>
 
 class FtpPI;
 class FtpDTP;
@@ -188,8 +187,8 @@ private slots:
     //^^^^^^^^^^^^ RFC2228 ^^^^^^^^^^^^^^^
 
     //vvvvvvvvvvvv RFC2389 vvvvvvvvvvvvvvv
-    //void doFEAT(const QString &);
-    //void doOPTS(const QString &);
+    void doFEAT(const QString &);
+    void doOPTS(const QString &param);
     //^^^^^^^^^^^^ RFC2389 ^^^^^^^^^^^^^^^
 
     //vvvvvvvvvvvv RFC2428 vvvvvvvvvvvvvvv
@@ -377,7 +376,7 @@ FtpServerPrivate::FtpServerPrivate(FtpServer *q, const QString &rootPath) :
     else
         this->rootPath = QDir::currentPath();
 
-    codec = QTextCodec::codecForLocale();
+    codec = QTextCodec::codecForName("UTF-8");
     welcome = QLatin1String("Welcome.");
 }
 
@@ -488,8 +487,10 @@ void FtpPI::sendResponse(int responseCode, const QString &responseText)
             } else if (i == lines.size() - 1) {
                 m_socket->write(code);
                 m_socket->write(" ");
-            } else if (line.contains(QRegularExpression(QLatin1String("^\\d{3}")))) {
-                m_socket->write("  ");
+            } else {
+                //1. mid-lines that starts with \d{3} should be prepended some space.
+                //2. FEAT features should be prepended one space
+                m_socket->write(" ");
             }
             m_socket->write(m_server->codec()->fromUnicode(line));
             m_socket->write("\r\n");
@@ -1093,6 +1094,35 @@ void FtpPI::doPBSZ(const QString &param)
     sendResponse(200, "Command okay.");
 }
 #endif
+
+void FtpPI::doFEAT(const QString &)
+{
+    QString out = QStringLiteral("Extensions supported:\r\n");
+
+    if (m_server->codec()->mibEnum() == 106) {//utf8
+        //Send the feature only if we are using utf8 now.
+        out.append(QLatin1String("UTF8\r\n"));
+    }
+
+    out.append(QLatin1String("END"));
+
+    sendResponse(211, out);
+}
+
+void FtpPI::doOPTS(const QString &param)
+{
+    if (param.startsWith("UTF8", Qt::CaseInsensitive)
+            || param.startsWith("UTF-8", Qt::CaseInsensitive)) {
+        //Note, this option isn't defined in any RFC files.
+        //Only make the ftp client provided by Windows explorer happy here.
+        if (m_server->codec()->mibEnum() == 106) {//utf8
+            sendResponse(200, "Command okay.");
+            return;
+        }
+    }
+
+    sendResponse(504, "Command not implemented for this param.");
+}
 
 void FtpPI::doREST(const QString &marker)
 {
