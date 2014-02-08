@@ -1061,10 +1061,14 @@ void FtpPI::doAUTH(const QString &param)
     if (!vertifyParamsNotEmpty(param))
         return;
 
-    if (param.toUpper() == QLatin1String("TLS")) {
-        sendResponse(234, "Initializing SSL connection.");
-        m_socket->setSslConfiguration(m_server->d_func()->sslConfiguration);
-        m_socket->startServerEncryption();
+    if (param.toUpper() == QLatin1String("TLS") || param.toUpper() == QLatin1String("SSL")) {
+        if (!m_server->d_func()->sslConfiguration.isNull()) {
+            sendResponse(234, "Initializing SSL connection.");
+            m_socket->setSslConfiguration(m_server->d_func()->sslConfiguration);
+            m_socket->startServerEncryption();
+        } else {
+            sendResponse(534, "Server configure error.");
+        }
     } else {
         sendResponse(504, "Command not implemented for this param");
     }
