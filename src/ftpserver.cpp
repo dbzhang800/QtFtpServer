@@ -24,7 +24,6 @@
 ****************************************************************************/
 #include "ftpserver.h"
 
-#include <QSslSocket>
 #include <QTimer>
 #include <QTime>
 #include <QDir>
@@ -34,7 +33,12 @@
 #include <QList>
 #include <QHostAddress>
 #include <QTcpServer>
+#ifndef QT_NO_SSL
+#include <QSslSocket>
 #include <QSslConfiguration>
+#else
+#include <QTcpSocket>
+#endif
 #include <QLocale>
 #include <QMap>
 #include <QRegularExpression>
@@ -74,7 +78,9 @@ public:
     FtpServer *q_ptr;
     QString rootPath;
     QTextCodec *codec;
+#ifndef QT_NO_SSL
     QSslConfiguration sslConfiguration;
+#endif
     QString welcome;
     QMap<QString, FtpAccountData> accounts;
 };
@@ -169,6 +175,7 @@ private slots:
     //^^^^^^^^^^^^ RFC959 ^^^^^^^^^^^^^^^
 
     //vvvvvvvvvvvv RFC2228 vvvvvvvvvvvvvvv
+#ifndef QT_NO_SSL
     void doAUTH(const QString &param);
     //void doADAT(const QString &);
     void doPROT(const QString &param);
@@ -177,6 +184,7 @@ private slots:
     //void doMIC(const QString &);
     //void doCONF(const QString &);
     //void doENC(const QString &);
+#endif
     //^^^^^^^^^^^^ RFC2228 ^^^^^^^^^^^^^^^
 
     //vvvvvvvvvvvv RFC2389 vvvvvvvvvvvvvvv
@@ -223,7 +231,11 @@ private:
     QString generateLISTLine(const QFileInfo &entry) const;
 
     FtpServer *m_server;
+#ifndef QT_NO_SSL
     QSslSocket *m_socket;
+#else
+    QTcpSocket *m_socket;
+#endif
     QString m_currentDir;
     QString m_homeDir;
     FtpDTP *m_dtp;
@@ -377,7 +389,11 @@ FtpServerPrivate::FtpServerPrivate(FtpServer *q, const QString &rootPath) :
 FtpPI::FtpPI(int socketDescriptor, FtpServer *parent) :
     QObject(parent), m_server(parent)
 {
+#ifndef QT_NO_SSL
     m_socket = new QSslSocket(this);
+#else
+    m_socket = new QTcpSocket(this);
+#endif
     m_socket->setSocketDescriptor(socketDescriptor);
     m_currentDir = QLatin1String("/");
     m_dtp = new FtpDTP(this);
@@ -1038,6 +1054,7 @@ void FtpPI::doDELE(const QString &path)
     sendResponse(250, "OK.");
 }
 
+#ifndef QT_NO_SSL
 void FtpPI::doAUTH(const QString &param)
 {
     if (!vertifyParamsNotEmpty(param))
@@ -1075,6 +1092,7 @@ void FtpPI::doPBSZ(const QString &param)
 
     sendResponse(200, "Command okay.");
 }
+#endif
 
 void FtpPI::doREST(const QString &marker)
 {
@@ -1437,11 +1455,13 @@ void FtpServer::setCodec(const char *codecName)
         d->codec = c;
 }
 
+#ifndef QT_NO_SSL
 void FtpServer::setSslConfiguration(const QSslConfiguration &configuration)
 {
     Q_D(FtpServer);
     d->sslConfiguration = configuration;
 }
+#endif
 
 QString FtpServer::welcomeMessage() const
 {

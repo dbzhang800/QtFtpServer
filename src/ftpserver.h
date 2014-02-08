@@ -53,9 +53,11 @@ public:
 public slots:
     void setRootPath(const QString &rootPath);
     void setCodec(const char *codecName);
-    void setSslConfiguration(const QSslConfiguration &configuration);
     void setWelcomeMessage(const QString &message);
     void addAccount(const QString &user, const QString &passWord=QString(), const QString &home=QString(), Permissions permissions = Read);
+#ifndef QT_NO_SSL
+    void setSslConfiguration(const QSslConfiguration &configuration);
+#endif
 
 protected:
     void incomingConnection(qintptr socketDescriptor);
